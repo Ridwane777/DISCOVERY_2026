@@ -1,30 +1,66 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Home, Folder, Users, FileText, Bell, Settings, LogOut } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Home, 
+  FolderKanban, 
+  Users, 
+  FileText, 
+  Bell, 
+  Upload,
+  Settings, 
+  LogOut 
+} from 'lucide-react';
+
+import { useRouter } from 'next/navigation';
 
 interface MenuItem {
+  id: string;
   icon: React.ElementType;
   label: string;
   href: string;
-  active?: boolean;
 }
 
 interface SidebarProps {
   activeRoute?: string;
   defaultCollapsed?: boolean;
+  userRole: 'super_admin' | 'admin' | 'user';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCollapsed = false }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  activeRoute = '/dashboard', 
+  defaultCollapsed = false,
+  userRole = 'super_admin'
+}) => {
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const menuItems: MenuItem[] = [
-    { icon: Home, label: 'Dashboard', href: '/dashboard' },
-    { icon: Folder, label: 'Projets', href: '/projets' },
-    { icon: Users, label: 'Utilisateurs', href: '/utilisateurs' },
-    { icon: FileText, label: 'Livrables', href: '/livrables' },
-    { icon: Bell, label: 'Notifications', href: '/notifications' },
-  ];
+  // Définition des menus par rôle
+  const menuConfigs = {
+    super_admin: [
+      { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/super-admin' },
+      { id: 'projects', label: 'Projets', icon: FolderKanban, href: '/projects' },
+      { id: 'users', label: 'Utilisateurs', icon: Users, href: '/super-admin/users' },
+      { id: 'deliverables', label: 'Livrables', icon: FileText, href: '/deliverables' },
+      { id: 'notifications', label: 'Notifications', icon: Bell, href: '/notifications' },
+    ],
+    admin: [
+      { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/admin' },
+      { id: 'projects', label: 'Mes Projets', icon: FolderKanban, href: '/projects' },
+      { id: 'deliverables', label: 'Mes Livrables', icon: FileText, href: '/deliverables' },
+      { id: 'notifications', label: 'Notifications', icon: Bell, href: '/notifications' },
+    ],
+    user: [
+      { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/user' },
+      { id: 'projects', label: 'Mes Projets', icon: FolderKanban, href: '/projects' },
+      { id: 'deliverables', label: 'Livrables', icon: FileText, href: '/deliverables' },
+      { id: 'uploads', label: 'Mes Uploads', icon: Upload, href: '/uploads' },
+    ],
+  };
+
+  const menuItems = menuConfigs[userRole];
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -43,9 +79,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCo
             <FileText className="w-6 h-6" />
           </div>
           {!isCollapsed && (
-            <div>
+            <div className="flex flex-col">
               <div className="font-bold text-lg">LuxDev</div>
-              <div className="text-xs text-gray-400">Super Admin</div>
             </div>
           )}
         </div>
@@ -55,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCo
       <button 
         onClick={toggleSidebar}
         className="mx-4 mt-4 p-2 hover:bg-gray-800 rounded-lg flex items-center justify-center transition-colors"
+        aria-label={isCollapsed ? "Ouvrir la sidebar" : "Fermer la sidebar"}
       >
         {isCollapsed ? (
           <ChevronRight className="w-5 h-5" />
@@ -66,23 +102,26 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCo
       {/* Navigation Menu */}
       <nav className="flex-1 px-4 py-6">
         <ul className="space-y-2">
-          {menuItems.map((item, index) => {
+          {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeRoute === item.href;
             
             return (
-              <li key={index}>
+              <li key={item.id}>
                 <a
                   href={item.href}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'bg-indigo-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   } ${isCollapsed ? 'justify-center' : ''}`}
                   title={isCollapsed ? item.label : ''}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                  {isActive && !isCollapsed && (
+                    <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                  )}
                 </a>
               </li>
             );
@@ -93,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCo
       {/* Bottom Actions */}
       <div className="p-4 space-y-2 border-t border-gray-800">
         <button 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors ${
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
             isCollapsed ? 'justify-center' : ''
           }`}
           title={isCollapsed ? 'Paramètres' : ''}
@@ -101,8 +140,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeRoute = '/dashboard', defaultCo
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!isCollapsed && <span className="font-medium">Paramètres</span>}
         </button>
-        <button 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors ${
+        <button
+          onClick={() => router.push('/')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
             isCollapsed ? 'justify-center' : ''
           }`}
           title={isCollapsed ? 'Déconnexion' : ''}
