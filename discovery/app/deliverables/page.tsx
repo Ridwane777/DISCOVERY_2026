@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import AddDeliverableModal from '@/components/DeliverablesModal';
-import { 
-  Search, 
-  Filter, 
-  FileText, 
-  Clock, 
-  CheckCircle, 
+import {
+  Search,
+  Filter,
+  FileText,
+  Clock,
+  CheckCircle,
   AlertCircle,
   Calendar,
   Download,
@@ -18,7 +18,8 @@ import {
   Upload,
   FileUp,
   FileWarning,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 // Types
@@ -29,20 +30,20 @@ interface Deliverable {
   format: string;
   deadline: string;
   status: 'pending' | 'received_ontime' | 'late' | 'upcoming';
-  uploadedBy?: string;
+  assignedTo: string;
   uploadedAt?: string;
   fileSize?: string;
   projectId: string;
-  assignedTo: string;
+  uploadedBy?: string;
 }
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: string | number;
+  trend: string;
+  trendType: 'positive' | 'negative' | 'neutral';
   icon: React.ReactNode;
   iconBgColor: string;
-  trend?: string;
-  trendType?: 'positive' | 'negative' | 'neutral';
 }
 
 interface FilterOption {
@@ -51,19 +52,19 @@ interface FilterOption {
 }
 
 // Stat Card Component
-const StatCard: React.FC<StatCardProps> = ({ 
-  title, 
-  value, 
-  icon, 
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon,
   iconBgColor,
   trend,
   trendType = 'neutral'
 }) => {
-  const trendColor = 
-    trendType === 'positive' ? 'text-green-600' : 
-    trendType === 'negative' ? 'text-red-600' : 
-    'text-gray-600';
-  
+  const trendColor =
+    trendType === 'positive' ? 'text-green-600' :
+      trendType === 'negative' ? 'text-red-600' :
+        'text-gray-600';
+
   return (
     <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -146,7 +147,7 @@ const EmptyDeliverablesState: React.FC = () => {
 };
 
 // Deliverables Table Component
-const DeliverablesTable: React.FC<{ 
+const DeliverablesTable: React.FC<{
   deliverables: Deliverable[];
   onView: (id: string) => void;
   onDownload: (id: string) => void;
@@ -171,8 +172,8 @@ const DeliverablesTable: React.FC<{
       {/* Table Body */}
       <div className="divide-y divide-gray-200">
         {deliverables.map((deliverable) => (
-          <div 
-            key={deliverable.id} 
+          <div
+            key={deliverable.id}
             className="px-6 py-4 hover:bg-gray-50 transition-colors"
             onMouseEnter={() => setSelectedDeliverable(deliverable.id)}
             onMouseLeave={() => setSelectedDeliverable(null)}
@@ -227,7 +228,7 @@ const DeliverablesTable: React.FC<{
               <div className="col-span-2">
                 <div className="flex items-center justify-end gap-2">
                   {deliverable.status === 'pending' || deliverable.status === 'upcoming' ? (
-                    <button 
+                    <button
                       onClick={() => onUpload(deliverable.id)}
                       className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1.5 text-sm font-medium transition-colors"
                     >
@@ -235,7 +236,7 @@ const DeliverablesTable: React.FC<{
                       Upload
                     </button>
                   ) : deliverable.status === 'received_ontime' || deliverable.status === 'late' ? (
-                    <button 
+                    <button
                       onClick={() => onDownload(deliverable.id)}
                       className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1.5 text-sm font-medium transition-colors"
                     >
@@ -243,9 +244,9 @@ const DeliverablesTable: React.FC<{
                       Télécharger
                     </button>
                   ) : null}
-                  
+
                   <div className="relative">
-                    <button 
+                    <button
                       onClick={() => setSelectedDeliverable(selectedDeliverable === deliverable.id ? null : deliverable.id)}
                       className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
                     >
@@ -254,14 +255,14 @@ const DeliverablesTable: React.FC<{
 
                     {selectedDeliverable === deliverable.id && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
-                        <button 
+                        <button
                           onClick={() => { onView(deliverable.id); setSelectedDeliverable(null); }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                         >
                           <Eye className="w-4 h-4 text-gray-500" />
                           Voir détails
                         </button>
-                        <button 
+                        <button
                           onClick={() => { onDownload(deliverable.id); setSelectedDeliverable(null); }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                         >
@@ -269,7 +270,7 @@ const DeliverablesTable: React.FC<{
                           Télécharger
                         </button>
                         {deliverable.status === 'pending' || deliverable.status === 'upcoming' && (
-                          <button 
+                          <button
                             onClick={() => { onUpload(deliverable.id); setSelectedDeliverable(null); }}
                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                           >
@@ -290,76 +291,105 @@ const DeliverablesTable: React.FC<{
   );
 };
 
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 // Main Deliverables Page Component
 const DeliverablesPage: React.FC = () => {
-  // État pour les livrables
-  const [deliverables, setDeliverables] = useState<Deliverable[]>([
-    // Données d'exemple (à supprimer quand vide)
-    // {
-    //   id: '1',
-    //   name: 'Rapport de conception',
-    //   project: 'Site E-commerce Luxe',
-    //   format: '.pdf',
-    //   deadline: '15 Février 2024',
-    //   status: 'pending',
-    //   assignedTo: 'Jean Dupont',
-    //   projectId: '1'
-    // },
-    // {
-    //   id: '2',
-    //   name: 'Maquettes UI/UX',
-    //   project: 'Application Mobile Banque',
-    //   format: '.fig',
-    //   deadline: '20 Février 2024',
-    //   status: 'upcoming',
-    //   uploadedBy: 'Sophie Martin',
-    //   uploadedAt: '18/02/2024',
-    //   fileSize: '4.2 MB',
-    //   assignedTo: 'Thomas Leroy',
-    //   projectId: '2'
-    // },
-    // {
-    //   id: '3',
-    //   name: 'Documentation API',
-    //   project: 'Système de Gestion RH',
-    //   format: '.docx',
-    //   deadline: '10 Janvier 2024',
-    //   status: 'received_ontime',
-    //   uploadedBy: 'Jean Dupont',
-    //   uploadedAt: '08/01/2024',
-    //   fileSize: '2.1 MB',
-    //   assignedTo: 'Laura Schmidt',
-    //   projectId: '4'
-    // },
-    // {
-    //   id: '4',
-    //   name: 'Rapport de test',
-    //   project: 'Refonte Site Corporate',
-    //   format: '.xlsx',
-    //   deadline: '05 Février 2024',
-    //   status: 'late',
-    //   uploadedBy: 'Thomas Leroy',
-    //   uploadedAt: '07/02/2024',
-    //   fileSize: '3.5 MB',
-    //   assignedTo: 'Sophie Martin',
-    //   projectId: '3'
-    // }
-  ]);
+  const { data: deliverables, error, mutate } = useSWR<Deliverable[]>('/api/deliverables', fetcher);
+  const { data: projectsData } = useSWR<any[]>('/api/projects', fetcher);
+  const { data: usersData } = useSWR<any[]>('/api/users', fetcher);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [currentUserRole, setCurrentUserRole] = useState<'super_admin' | 'admin' | 'user'>('super_admin');
+  const [currentUserRole] = useState<'super_admin' | 'admin' | 'user'>('super_admin');
+
+  // États pour le modal
   const [isAddDeliverableModalOpen, setIsAddDeliverableModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const projectOptions: FilterOption[] = [
-    { value: 'all', label: 'Tous les projets' },
-    { value: '1', label: 'Site E-commerce Luxe' },
-    { value: '2', label: 'Application Mobile Banque' },
-    { value: '3', label: 'Refonte Site Corporate' },
-    { value: '4', label: 'Système de Gestion RH' }
-  ];
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  // Map data for modals
+  const availableProjects = React.useMemo(() => {
+    if (!Array.isArray(projectsData)) return [];
+    return projectsData.map(p => ({ id: p.id, name: p.name }));
+  }, [projectsData]);
+
+  const availableUsers = React.useMemo(() => {
+    if (!Array.isArray(usersData)) return [];
+    return usersData.map(u => ({
+      id: u.id,
+      name: `${u.firstName} ${u.lastName}`,
+      email: u.email,
+      role: u.role
+    }));
+  }, [usersData]);
+
+  // Fonctions de gestion
+  const handleAddDeliverable = async (deliverableData: any) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/deliverables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(deliverableData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create deliverable');
+
+      await mutate();
+      setIsAddDeliverableModalOpen(false);
+    } catch (error) {
+      console.error('Erreur lors de la création du livrable:', error);
+      alert('Erreur lors de la création');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewDeliverable = (id: string) => {
+    console.log('Voir livrable ID:', id);
+    // Navigation vers les détails
+  };
+
+  const handleDownloadDeliverable = (id: string) => {
+    console.log('Télécharger livrable ID:', id);
+    // Logique de téléchargement
+  };
+
+  const handleUploadDeliverable = (id: string) => {
+    console.log('Uploader livrable ID:', id);
+    // Ici on pourrait ouvrir un sélecteur de fichier et faire un PUT vers /api/deliverables/[id]
+  };
+
+  const handleDeleteDeliverable = async (id: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce livrable ?')) {
+      try {
+        const response = await fetch(`/api/deliverables/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete deliverable');
+        await mutate();
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression');
+      }
+    }
+  };
+
+  // Options pour les filtres (basées sur les données SWR)
+  const projectOptions: FilterOption[] = React.useMemo(() => {
+    const options = [{ value: 'all', label: 'Tous les projets' }];
+    if (Array.isArray(projectsData)) {
+      options.push(...projectsData.map(p => ({ value: p.id, label: p.name })));
+    }
+    return options;
+  }, [projectsData]);
 
   const statusOptions: FilterOption[] = [
     { value: 'all', label: 'Tous les statuts' },
@@ -369,105 +399,29 @@ const DeliverablesPage: React.FC = () => {
     { value: 'upcoming', label: 'À venir' }
   ];
 
-  const availableProjects = [
-    { id: '1', name: 'Site E-commerce Luxe', client: 'ACME Corp' },
-    { id: '2', name: 'Application Mobile Banque', client: 'Banque Luxembourg' },
-    { id: '3', name: 'Refonte Site Corporate', client: 'Tech Solutions' },
-    { id: '4', name: 'Système de Gestion RH', client: 'HR Partners' }
-  ];
-
-  const availableUsers = [
-    { id: '1', name: 'Jean Dupont', email: 'jean@acme.com', role: 'client' },
-    { id: '2', name: 'Sophie Martin', email: 'sophie@banque.lu', role: 'client' },
-    { id: '3', name: 'Thomas Leroy', email: 'thomas@tech.com', role: 'client' },
-    { id: '4', name: 'Laura Schmidt', email: 'laura@hr.com', role: 'client' },
-    { id: '5', name: 'Pierre Lambert', email: 'pierre@consulting.fr', role: 'user' }
-  ];
-
-  const handleAddDeliverable = async (deliverableData: any) => {
-    setIsLoading(true);
-    try {
-      console.log('Données du livrable:', deliverableData);
-      
-      // Ici, vous feriez appel à votre API
-      // const response = await fetch('/api/deliverables', {
-      //   method: 'POST',
-      //   body: JSON.stringify(deliverableData),
-      //   headers: { 'Content-Type': 'application/json' }
-      // });
-      
-      // Simuler un délai d'API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Ajouter le nouveau livrable à la liste (exemple)
-      const newDeliverable = {
-        id: Date.now().toString(),
-        name: deliverableData.name,
-        project: availableProjects.find(p => p.id === deliverableData.projectId)?.name || 'Projet inconnu',
-        format: deliverableData.format,
-        deadline: new Date(deliverableData.deadline).toLocaleDateString('fr-FR'),
-        status: 'pending',
-        assignedTo: availableUsers.find(u => u.id === deliverableData.assignedTo)?.name || 'Inconnu',
-        uploadedAt: undefined,
-        fileSize: undefined,
-        projectId: deliverableData.projectId
-      };
-      
-      setDeliverables(prev => [newDeliverable, ...prev]);
-      setIsAddDeliverableModalOpen(false);
-      
-      // Afficher un message de succès (vous pouvez utiliser un toast)
-      console.log('Livrable créé avec succès!');
-      
-    } catch (error) {
-      console.error('Erreur lors de la création du livrable:', error);
-      // Gérer l'erreur (afficher un message)
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fonctions de gestion
-  const handleViewDeliverable = (id: string) => {
-    console.log('Voir livrable:', id);
-    // Navigation vers les détails
-  };
-
-  const handleDownloadDeliverable = (id: string) => {
-    console.log('Télécharger livrable:', id);
-    // Logique de téléchargement
-  };
-
-  const handleUploadDeliverable = (id: string) => {
-    console.log('Upload livrable:', id);
-    // Ouverture modal d'upload
-  };
-
-  const handleSearch = (query: string) => {
-    console.log('Recherche livrable:', query);
-  };
-
   // Filtrer les livrables
-  const filteredDeliverables = deliverables.filter(deliverable => {
-    const matchesSearch = searchQuery === '' || 
+  const deliverablesList = Array.isArray(deliverables) ? deliverables : [];
+
+  const filteredDeliverables = deliverablesList.filter(deliverable => {
+    const matchesSearch = searchQuery === '' ||
       deliverable.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deliverable.project.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesProject = selectedProject === 'all' || 
+      deliverable.project?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesProject = selectedProject === 'all' ||
       deliverable.projectId === selectedProject;
-    
-    const matchesStatus = selectedStatus === 'all' || 
+
+    const matchesStatus = selectedStatus === 'all' ||
       deliverable.status === selectedStatus;
-    
+
     return matchesSearch && matchesProject && matchesStatus;
   });
 
   // Calculer les statistiques
-  const totalDeliverables = deliverables.length;
-  const pendingDeliverables = deliverables.filter(d => d.status === 'pending').length;
-  const onTimeDeliverables = deliverables.filter(d => d.status === 'received_ontime').length;
-  const lateDeliverables = deliverables.filter(d => d.status === 'late').length;
-  const upcomingDeliverables = deliverables.filter(d => d.status === 'upcoming').length;
+  const totalDeliverables = deliverablesList.length;
+  const pendingDeliverables = deliverablesList.filter(d => d.status === 'pending').length;
+  const onTimeDeliverables = deliverablesList.filter(d => d.status === 'received_ontime').length;
+  const lateDeliverables = deliverablesList.filter(d => d.status === 'late').length;
+  const upcomingDeliverables = deliverablesList.filter(d => d.status === 'upcoming').length;
 
   // Données utilisateur simulées pour le Header
   const userData = {
@@ -479,17 +433,18 @@ const DeliverablesPage: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar activeRoute="/livrables" userRole={currentUserRole} />
-      
+      <Sidebar activeRoute="/livrables" userRole={currentUserRole}
+      />
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <Header 
+        <Header
           user={userData}
           notificationCount={5}
           onSearchChange={handleSearch}
         />
-        
+
         {/* Content */}
         <div className="flex-1 bg-gray-50 overflow-auto p-8">
           {/* Page Header avec Stats */}
@@ -499,7 +454,7 @@ const DeliverablesPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900">Livrables</h1>
                 <p className="text-gray-600 mt-1">Suivez tous vos livrables et leurs échéances</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsAddDeliverableModalOpen(true)}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors font-medium shadow-sm hover:shadow-md"
               >
@@ -599,7 +554,7 @@ const DeliverablesPage: React.FC = () => {
                 {filteredDeliverables.length} livrable{filteredDeliverables.length !== 1 ? 's' : ''} trouvé{filteredDeliverables.length !== 1 ? 's' : ''}
               </span>
               {(searchQuery || selectedProject !== 'all' || selectedStatus !== 'all') && (
-                <button 
+                <button
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedProject('all');
@@ -621,7 +576,7 @@ const DeliverablesPage: React.FC = () => {
                   Affichage de {filteredDeliverables.length} livrable{filteredDeliverables.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <DeliverablesTable 
+              <DeliverablesTable
                 deliverables={filteredDeliverables}
                 onView={handleViewDeliverable}
                 onDownload={handleDownloadDeliverable}

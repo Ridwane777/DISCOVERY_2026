@@ -4,14 +4,14 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import CreateProjectModal from '@/components/CreateProjectModal';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Folder, 
-  CheckCircle, 
-  PauseCircle, 
-  Clock, 
+import {
+  Search,
+  Filter,
+  Plus,
+  Folder,
+  CheckCircle,
+  PauseCircle,
+  Clock,
   MoreVertical,
   Download,
   Eye,
@@ -52,19 +52,19 @@ interface FilterOption {
 }
 
 // Stat Card Component
-const StatCard: React.FC<StatCardProps> = ({ 
-  title, 
-  value, 
-  change, 
-  changeType = 'neutral', 
-  icon, 
-  iconBgColor 
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  change,
+  changeType = 'neutral',
+  icon,
+  iconBgColor
 }) => {
-  const changeColor = 
-    changeType === 'positive' ? 'text-green-600' : 
-    changeType === 'negative' ? 'text-red-600' : 
-    'text-gray-600';
-  
+  const changeColor =
+    changeType === 'positive' ? 'text-green-600' :
+      changeType === 'negative' ? 'text-red-600' :
+        'text-gray-600';
+
   return (
     <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -95,20 +95,20 @@ interface ProjectCardProps {
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, onView, onEdit, onDelete }) => {
   const statusConfig = {
-    active: { 
-      color: 'bg-green-100 text-green-800', 
+    active: {
+      color: 'bg-green-100 text-green-800',
       icon: <CheckCircle className="w-4 h-4" />,
-      label: 'Actif' 
+      label: 'Actif'
     },
-    completed: { 
-      color: 'bg-blue-100 text-blue-800', 
+    completed: {
+      color: 'bg-blue-100 text-blue-800',
       icon: <CheckCircle className="w-4 h-4" />,
-      label: 'Complété' 
+      label: 'Complété'
     },
-    paused: { 
-      color: 'bg-yellow-100 text-yellow-800', 
+    paused: {
+      color: 'bg-yellow-100 text-yellow-800',
       icon: <PauseCircle className="w-4 h-4" />,
-      label: 'En pause' 
+      label: 'En pause'
     },
   };
 
@@ -128,31 +128,31 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onView, onEdit, onDe
           </div>
         </div>
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowMenu(!showMenu)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             onBlur={() => setTimeout(() => setShowMenu(false), 100)}
           >
             <MoreVertical className="w-5 h-5 text-gray-500" />
           </button>
-          
+
           {showMenu && (
             <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
-              <button 
+              <button
                 onClick={() => { onView(project.id); setShowMenu(false); }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
               >
                 <Eye className="w-4 h-4 text-gray-500" />
                 Voir détails
               </button>
-              <button 
+              <button
                 onClick={() => { onEdit(project.id); setShowMenu(false); }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
               >
                 <Edit className="w-4 h-4 text-gray-500" />
                 Modifier
               </button>
-              <button 
+              <button
                 onClick={() => { setShowMenu(false); }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -160,7 +160,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onView, onEdit, onDe
                 Télécharger rapports
               </button>
               <div className="border-t border-gray-100 my-1"></div>
-              <button 
+              <button
                 onClick={() => { onDelete(project.id); setShowMenu(false); }}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
               >
@@ -235,7 +235,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ title, description, actionLabel
       <p className="text-gray-900 font-medium text-lg mb-2">{title}</p>
       {description && <p className="text-gray-500 mb-6 text-center max-w-md">{description}</p>}
       {actionLabel && onAction && (
-        <button 
+        <button
           onClick={onAction}
           className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors font-medium"
         >
@@ -247,63 +247,14 @@ const EmptyState: React.FC<EmptyStateProps> = ({ title, description, actionLabel
   );
 };
 
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 // Main Projects Page Component
 const ProjectsPage: React.FC = () => {
-  // État pour les projets
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: '1',
-      name: 'Site E-commerce Luxe',
-      description: 'Développement d\'une plateforme e-commerce premium pour produits de luxe avec système de paiement sécurisé.',
-      sector: 'E-commerce',
-      status: 'active',
-      deliveryDate: '15 Mars 2024',
-      adminCount: 2,
-      userCount: 1,
-      deliverablesCount: 12,
-      pendingDeliverables: 2,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'Application Mobile Banque',
-      description: 'Application mobile iOS et Android pour gestion bancaire avec fonctionnalités de trading.',
-      sector: 'Finance',
-      status: 'active',
-      deliveryDate: '30 Avril 2024',
-      adminCount: 3,
-      userCount: 2,
-      deliverablesCount: 8,
-      pendingDeliverables: 0,
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '3',
-      name: 'Refonte Site Corporate',
-      description: 'Modernisation complète du site corporate avec intégration CMS et optimisation SEO.',
-      sector: 'Corporate',
-      status: 'paused',
-      deliveryDate: '10 Février 2024',
-      adminCount: 1,
-      userCount: 1,
-      deliverablesCount: 5,
-      pendingDeliverables: 1,
-      createdAt: '2023-12-01'
-    },
-    {
-      id: '4',
-      name: 'Système de Gestion RH',
-      description: 'Plateforme complète de gestion des ressources humaines avec modules de paie et recrutement.',
-      sector: 'RH',
-      status: 'completed',
-      deliveryDate: '15 Janvier 2024',
-      adminCount: 2,
-      userCount: 3,
-      deliverablesCount: 15,
-      pendingDeliverables: 0,
-      createdAt: '2023-11-15'
-    }
-  ]);
+  const { data: projects, mutate } = useSWR<Project[]>('/api/projects', fetcher);
+  const { data: usersData } = useSWR<any[]>('/api/users', fetcher);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSector, setSelectedSector] = useState('all');
@@ -332,50 +283,34 @@ const ProjectsPage: React.FC = () => {
     { value: 'paused', label: 'En pause' }
   ];
 
-  // Liste d'utilisateurs pour le modal
-  const users = [
-    { id: '1', name: 'Jean Dupont', email: 'client@acme.com', role: 'client' },
-    { id: '2', name: 'Sophie Martin', email: 'admin@luxdev.lu', role: 'admin' },
-    { id: '3', name: 'Thomas Leroy', email: 'admin2@luxdev.lu', role: 'admin' },
-    { id: '4', name: 'Marie Dubois', email: 'superadmin@luxdev.lu', role: 'super_admin' },
-  ];
+  // Map users for the modal
+  const availableUsers = React.useMemo(() => {
+    if (!Array.isArray(usersData)) return [];
+    return usersData.map(u => ({
+      id: u.id,
+      name: `${u.firstName} ${u.lastName}`,
+      email: u.email,
+      role: u.role
+    }));
+  }, [usersData]);
 
   // Fonctions de gestion
   const handleCreateProject = async (projectData: any) => {
     setIsLoading(true);
     try {
-      console.log('Création projet:', projectData);
-      
-      // Simulation de délai API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Créer le nouveau projet
-      const newProject = {
-        id: Date.now().toString(),
-        name: projectData.name,
-        description: projectData.description,
-        sector: projectData.sector,
-        status: 'active' as const,
-        deliveryDate: projectData.endDate 
-          ? new Date(projectData.endDate).toLocaleDateString('fr-FR') 
-          : 'Non défini',
-        adminCount: projectData.admins?.length || 0,
-        userCount: 1, // Le client assigné
-        deliverablesCount: projectData.fileRequirements?.length || 0,
-        pendingDeliverables: projectData.fileRequirements?.length || 0,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      
-      // Ajouter à la liste
-      setProjects(prev => [newProject, ...prev]);
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create project');
+
+      await mutate();
       setIsCreateProjectModalOpen(false);
-      
-      // Message de succès (vous pouvez utiliser un toast)
-      console.log('Projet créé avec succès!');
-      
     } catch (error) {
       console.error('Erreur lors de la création du projet:', error);
-      // Gérer l'erreur
+      alert('Erreur lors de la création');
     } finally {
       setIsLoading(false);
     }
@@ -383,17 +318,24 @@ const ProjectsPage: React.FC = () => {
 
   const handleViewProject = (id: string) => {
     console.log('Voir projet:', id);
-    // Navigation vers /projects/[id]
   };
 
   const handleEditProject = (id: string) => {
     console.log('Modifier projet:', id);
-    // Ouverture modal d'édition
   };
 
-  const handleDeleteProject = (id: string) => {
+  const handleDeleteProject = async (id: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce projet ?')) {
-      setProjects(projects.filter(project => project.id !== id));
+      try {
+        const response = await fetch(`/api/projects/${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete project');
+        await mutate();
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression');
+      }
     }
   };
 
@@ -402,26 +344,27 @@ const ProjectsPage: React.FC = () => {
   };
 
   // Filtrer les projets
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = searchQuery === '' || 
+  const projectsList = Array.isArray(projects) ? projects : [];
+
+  const filteredProjects = projectsList.filter(project => {
+    const matchesSearch = searchQuery === '' ||
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSector = selectedSector === 'all' || 
+
+    const matchesSector = selectedSector === 'all' ||
       project.sector === selectedSector;
-    
-    const matchesStatus = selectedStatus === 'all' || 
+
+    const matchesStatus = selectedStatus === 'all' ||
       project.status === selectedStatus;
-    
+
     return matchesSearch && matchesSector && matchesStatus;
   });
 
   // Calculer les statistiques
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const completedProjects = projects.filter(p => p.status === 'completed').length;
-  const pausedProjects = projects.filter(p => p.status === 'paused').length;
-
+  const totalProjects = projectsList.length;
+  const activeProjects = projectsList.filter(p => p.status === 'active').length;
+  const completedProjects = projectsList.filter(p => p.status === 'completed').length;
+  const pausedProjects = projectsList.filter(p => p.status === 'paused').length;
   // Données utilisateur simulées pour le Header
   const userData = {
     name: 'Marie Dubois',
@@ -433,16 +376,16 @@ const ProjectsPage: React.FC = () => {
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <Sidebar activeRoute="/projects" userRole={userRole} />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <Header 
+        <Header
           user={userData}
           notificationCount={3}
           onSearchChange={handleUserSearch}
         />
-        
+
         {/* Content */}
         <div className="flex-1 bg-gray-50 overflow-auto p-8">
           {/* Page Header avec Stats */}
@@ -452,7 +395,7 @@ const ProjectsPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900">Projets</h1>
                 <p className="text-gray-600 mt-1">Gérez tous vos projets en cours</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsCreateProjectModalOpen(true)}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors font-medium shadow-sm hover:shadow-md"
               >
@@ -552,7 +495,7 @@ const ProjectsPage: React.FC = () => {
                 {filteredProjects.length} projet{filteredProjects.length !== 1 ? 's' : ''} trouvé{filteredProjects.length !== 1 ? 's' : ''}
               </span>
               {(searchQuery || selectedSector !== 'all' || selectedStatus !== 'all') && (
-                <button 
+                <button
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedSector('all');
@@ -582,14 +525,14 @@ const ProjectsPage: React.FC = () => {
           ) : (
             <div className="bg-white rounded-xl p-8 border border-gray-200">
               <EmptyState
-                title={projects.length === 0 ? "Aucun projet trouvé" : "Aucun résultat pour votre recherche"}
+                title={projectsList.length === 0 ? "Aucun projet trouvé" : "Aucun résultat pour votre recherche"}
                 description={
-                  projects.length === 0 
+                  projectsList.length === 0
                     ? "Commencez par créer votre premier projet pour organiser vos livrables et collaborateurs."
                     : "Essayez de modifier vos critères de recherche ou réinitialisez les filtres."
                 }
-                actionLabel={projects.length === 0 ? "Créer mon premier projet" : undefined}
-                onAction={projects.length === 0 ? () => setIsCreateProjectModalOpen(true) : undefined}
+                actionLabel={projectsList.length === 0 ? "Créer mon premier projet" : undefined}
+                onAction={projectsList.length === 0 ? () => setIsCreateProjectModalOpen(true) : undefined}
               />
             </div>
           )}
@@ -602,7 +545,7 @@ const ProjectsPage: React.FC = () => {
         onClose={() => setIsCreateProjectModalOpen(false)}
         onSubmit={handleCreateProject}
         loading={isLoading}
-        users={users}
+        users={availableUsers}
       />
     </div>
   );

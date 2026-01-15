@@ -4,40 +4,45 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import CreateUserModal from '@/components/CreateUserModal';
-import { 
-  Search, 
-  User, 
-  UserCog, 
+import useSWR from 'swr';
+import {
   Users,
+  UserPlus,
+  Search,
+  Filter,
+  MoreVertical,
   Shield,
-  UserCheck,
   Mail,
   Calendar,
-  MoreVertical,
+  Trash2,
   Edit,
   Key,
-  Trash2,
-  Filter,
-  Plus
+  CheckCircle,
+  AlertCircle,
+  Plus,
+  UserCog,
+  UserCheck
 } from 'lucide-react';
 
 // Types
 interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  name?: string;
   email: string;
   role: 'super_admin' | 'admin' | 'user';
-  createdAt: string;
-  status: 'active' | 'inactive';
-  avatarColor: string;
+  createdAt?: string;
+  avatarColor?: string;
+  status?: 'active' | 'inactive';
 }
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: string | number;
   icon: React.ReactNode;
   iconBgColor: string;
-  description?: string;
+  description: string;
 }
 
 interface FilterOption {
@@ -45,13 +50,15 @@ interface FilterOption {
   label: string;
 }
 
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 // Stat Card Component
-const StatCard: React.FC<StatCardProps> = ({ 
-  title, 
-  value, 
-  icon, 
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon,
   iconBgColor,
-  description 
+  description
 }) => {
   return (
     <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
@@ -71,78 +78,62 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
-// User Role Badge Component
-const UserRoleBadge: React.FC<{ role: User['role'] }> = ({ role }) => {
-  const roleConfig = {
-    super_admin: {
-      label: 'Super Admin',
-      color: 'bg-purple-100 text-purple-800',
-      icon: <Shield className="w-3 h-3" />
-    },
-    admin: {
-      label: 'Admin',
-      color: 'bg-blue-100 text-blue-800',
-      icon: <UserCog className="w-3 h-3" />
-    },
-    user: {
-      label: 'Client',
-      color: 'bg-green-100 text-green-800',
-      icon: <UserCheck className="w-3 h-3" />
-    }
+// User Table Component
+const UsersTable: React.FC<{
+  users: User[];
+  onEdit: (user: User) => void;
+  onDelete: (id: string) => void;
+  onResetPassword: (user: User) => void;
+}> = ({ users, onEdit, onDelete, onResetPassword }) => {
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  const getRoleBadge = (role: string) => {
+    const configs: Record<string, { label: string; color: string; icon: any }> = {
+      super_admin: { label: 'Super Admin', color: 'bg-purple-100 text-purple-700', icon: Shield },
+      admin: { label: 'Admin', color: 'bg-indigo-100 text-indigo-700', icon: Users },
+      user: { label: 'Client', color: 'bg-blue-100 text-blue-700', icon: Users }
+    };
+    const config = configs[role] || configs.user;
+    const Icon = config.icon;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        <Icon className="w-3 h-3" />
+        {config.label}
+      </span>
+    );
   };
 
-  const config = roleConfig[role];
-
-  return (
-    <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${config.color}`}>
-      {config.icon}
-      {config.label}
-    </span>
-  );
-};
-
-// User Table Component
-const UsersTable: React.FC<{ 
-  users: User[]; 
-  onEdit: (user: User) => void;
-  onResetPassword: (user: User) => void;
-  onDelete: (user: User) => void;
-}> = ({ users, onEdit, onResetPassword, onDelete }) => {
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const avatarColors = ['bg-blue-500', 'bg-purple-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-amber-500'];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Table Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="col-span-4">UTILISATEUR</div>
-          <div className="col-span-3">EMAIL</div>
-          <div className="col-span-2">RÔLE</div>
-          <div className="col-span-2">CRÉÉ LE</div>
-          <div className="col-span-1">ACTIONS</div>
+          <div className="col-span-4 text-left">UTILISATEUR</div>
+          <div className="col-span-3 text-left">EMAIL</div>
+          <div className="col-span-2 text-left">RÔLE</div>
+          <div className="col-span-2 text-left">CRÉÉ LE</div>
+          <div className="col-span-1 text-right">ACTIONS</div>
         </div>
       </div>
 
-      {/* Table Body */}
       <div className="divide-y divide-gray-200">
-        {users.map((user) => (
-          <div 
-            key={user.id} 
+        {users.map((user, index) => (
+          <div
+            key={user.id}
             className="px-6 py-4 hover:bg-gray-50 transition-colors"
-            onMouseEnter={() => setSelectedUser(user.id)}
-            onMouseLeave={() => setSelectedUser(null)}
           >
             <div className="grid grid-cols-12 gap-4 items-center">
               {/* Utilisateur */}
               <div className="col-span-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${user.avatarColor} rounded-full flex items-center justify-center text-white font-medium`}>
-                    {user.name.split(' ').map(n => n[0]).join('')}
+                  <div className={`w-10 h-10 ${user.avatarColor || avatarColors[index % avatarColors.length]} rounded-full flex items-center justify-center text-white font-medium`}>
+                    {user.firstName ? user.firstName[0] : ''}{user.lastName ? user.lastName[0] : ''}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{user.name}</p>
+                    <p className="font-medium text-gray-900">{user.firstName} {user.lastName}</p>
                     <p className="text-sm text-gray-500">
-                      {user.status === 'active' ? 'Actif' : 'Inactif'}
+                      {user.status === 'inactive' ? 'Inactif' : 'Actif'}
                     </p>
                   </div>
                 </div>
@@ -152,27 +143,27 @@ const UsersTable: React.FC<{
               <div className="col-span-3">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-900">{user.email}</span>
+                  <span className="text-gray-900 truncate">{user.email}</span>
                 </div>
               </div>
 
               {/* Rôle */}
               <div className="col-span-2">
-                <UserRoleBadge role={user.role} />
+                {getRoleBadge(user.role)}
               </div>
 
               {/* Date de création */}
               <div className="col-span-2">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-900">{user.createdAt}</span>
+                  <span className="text-gray-900">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</span>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="col-span-1">
-                <div className="relative">
-                  <button 
+              <div className="col-span-1 text-right">
+                <div className="relative inline-block text-left">
+                  <button
                     onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
                     className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
                   >
@@ -181,14 +172,14 @@ const UsersTable: React.FC<{
 
                   {selectedUser === user.id && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
-                      <button 
+                      <button
                         onClick={() => { onEdit(user); setSelectedUser(null); }}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                       >
                         <Edit className="w-4 h-4 text-gray-500" />
                         Modifier
                       </button>
-                      <button 
+                      <button
                         onClick={() => { onResetPassword(user); setSelectedUser(null); }}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
                       >
@@ -196,8 +187,8 @@ const UsersTable: React.FC<{
                         Réinitialiser mot de passe
                       </button>
                       <div className="border-t border-gray-100 my-1"></div>
-                      <button 
-                        onClick={() => { onDelete(user); setSelectedUser(null); }}
+                      <button
+                        onClick={() => { onDelete(user.id); setSelectedUser(null); }}
                         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -225,7 +216,7 @@ const EmptyUsersState: React.FC<{ onAddUser: () => void }> = ({ onAddUser }) => 
         </div>
         <p className="text-gray-900 font-medium text-lg mb-2">Aucun utilisateur trouvé</p>
         <p className="text-gray-500 mb-6">Commencez par ajouter votre premier utilisateur</p>
-        <button 
+        <button
           onClick={onAddUser}
           className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors font-medium"
         >
@@ -239,54 +230,15 @@ const EmptyUsersState: React.FC<{ onAddUser: () => void }> = ({ onAddUser }) => 
 
 // Main Users Page Component
 const UsersPage: React.FC = () => {
-  // État pour les utilisateurs
-  const [users, setUsers] = useState<User[]>([
-    // {
-    //   id: '1',
-    //   name: 'Marie Dubois',
-    //   email: 'superadmin@luxdev.lu',
-    //   role: 'super_admin',
-    //   createdAt: '14/01/2026',
-    //   status: 'active',
-    //   avatarColor: 'bg-purple-600'
-    // },
-    // {
-    //   id: '2',
-    //   name: 'Sophie Martin',
-    //   email: 'admin@luxdev.lu',
-    //   role: 'admin',
-    //   createdAt: '14/01/2026',
-    //   status: 'active',
-    //   avatarColor: 'bg-blue-600'
-    // },
-    // {
-    //   id: '3',
-    //   name: 'Jean Dupont',
-    //   email: 'client@acme-corp.com',
-    //   role: 'user',
-    //   createdAt: '14/01/2026',
-    //   status: 'active',
-    //   avatarColor: 'bg-green-600'
-    // },
-    // {
-    //   id: '4',
-    //   name: 'Thomas Leroy',
-    //   email: 'thomas@techcorp.lu',
-    //   role: 'user',
-    //   createdAt: '13/01/2026',
-    //   status: 'active',
-    //   avatarColor: 'bg-indigo-600'
-    // },
-    // {
-    //   id: '5',
-    //   name: 'Laura Schmidt',
-    //   email: 'laura@finance.lu',
-    //   role: 'admin',
-    //   createdAt: '12/01/2026',
-    //   status: 'active',
-    //   avatarColor: 'bg-pink-600'
-    // }
-  ]);
+  const { data: usersData, error, mutate } = useSWR<User[]>('/api/users', fetcher);
+
+  const users = React.useMemo(() => {
+    if (!Array.isArray(usersData)) return [];
+    return usersData.map(u => ({
+      ...u,
+      name: `${u.firstName} ${u.lastName}`
+    }));
+  }, [usersData]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -306,17 +258,29 @@ const UsersPage: React.FC = () => {
     setIsCreateUserModalOpen(true);
   };
 
-  // Fonction pour soumettre le formulaire de création d'utilisateur
-  const handleCreateUser = async (userData: any) => {
+  const handleCreateUser = async (newUserData: any) => {
     setIsLoading(true);
     try {
-      console.log('Création utilisateur:', userData);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUserData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to create user');
+      }
+
+      const createdUser = await response.json();
+
+      // Mise à jour optimiste de SWR
+      await mutate();
+
       setIsCreateUserModalOpen(false);
-      alert('Utilisateur créé avec succès!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur:', error);
-      alert('Erreur lors de la création de l\'utilisateur');
+      alert(`Erreur: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -324,35 +288,44 @@ const UsersPage: React.FC = () => {
 
   const handleEditUser = (user: User) => {
     console.log('Modifier utilisateur:', user);
-    // Logique d'édition
   };
 
   const handleResetPassword = (user: User) => {
     if (window.confirm(`Réinitialiser le mot de passe de ${user.name} ?`)) {
       console.log('Réinitialiser mot de passe pour:', user);
-      // Logique de réinitialisation
     }
   };
 
-  const handleDeleteUser = (user: User) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${user.name} ?`)) {
-      setUsers(users.filter(u => u.id !== user.id));
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer cet utilisateur ?`)) {
+      try {
+        const response = await fetch(`/api/users/${userId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete user');
+
+        // Rafraîchir les données
+        await mutate();
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression');
+      }
     }
   };
 
   const handleSearch = (query: string) => {
-    console.log('Recherche utilisateur:', query);
+    setSearchQuery(query);
   };
 
   // Filtrer les utilisateurs
   const filteredUsers = users.filter(user => {
-    const matchesSearch = searchQuery === '' || 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = searchQuery === '' ||
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = selectedRole === 'all' || 
+
+    const matchesRole = selectedRole === 'all' ||
       user.role === selectedRole;
-    
+
     return matchesSearch && matchesRole;
   });
 
@@ -362,7 +335,6 @@ const UsersPage: React.FC = () => {
   const superAdminUsers = users.filter(u => u.role === 'super_admin').length;
   const clientUsers = users.filter(u => u.role === 'user').length;
 
-  // Données utilisateur simulées pour le Header
   const userData = {
     name: 'Marie Dubois',
     email: 'superadmin@luxdev.lu',
@@ -371,28 +343,23 @@ const UsersPage: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
       <Sidebar activeRoute="/utilisateurs" userRole={currentUserRole} />
-      
-      {/* Main Content */}
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header 
+        <Header
           user={userData}
           notificationCount={2}
           onSearchChange={handleSearch}
         />
-        
-        {/* Content */}
+
         <div className="flex-1 bg-gray-50 overflow-auto p-8">
-          {/* Page Header avec Stats */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Utilisateurs</h1>
                 <p className="text-gray-600 mt-1">Gérez les utilisateurs de la plateforme</p>
               </div>
-              <button 
+              <button
                 onClick={handleAddUser}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors font-medium shadow-sm hover:shadow-md"
               >
@@ -401,7 +368,6 @@ const UsersPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 title="Total Utilisateurs"
@@ -434,10 +400,8 @@ const UsersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Filtres et Recherche */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Barre de recherche */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -449,7 +413,6 @@ const UsersPage: React.FC = () => {
                 />
               </div>
 
-              {/* Filtre rôle */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <select
@@ -466,13 +429,12 @@ const UsersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Info sur les résultats */}
             <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
               <span>
                 {filteredUsers.length} utilisateur{filteredUsers.length !== 1 ? 's' : ''} trouvé{filteredUsers.length !== 1 ? 's' : ''}
               </span>
               {(searchQuery || selectedRole !== 'all') && (
-                <button 
+                <button
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedRole('all');
@@ -485,15 +447,23 @@ const UsersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tableau des utilisateurs */}
-          {filteredUsers.length > 0 ? (
+          {error || (usersData && !Array.isArray(usersData)) ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-8 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5" />
+              <div>
+                <p className="font-semibold">Erreur lors du chargement des données</p>
+                <p className="text-sm opacity-90">{error?.message || (usersData as any)?.error || 'Une erreur inconnue est survenue'}</p>
+                <p className="text-xs mt-1 font-mono">Assurez-vous que votre base de données MySQL est active et que les variables d'environnement sont correctes.</p>
+              </div>
+            </div>
+          ) : filteredUsers.length > 0 ? (
             <>
               <div className="mb-4">
                 <p className="text-sm text-gray-500">
                   Affichage de {filteredUsers.length} utilisateur{filteredUsers.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <UsersTable 
+              <UsersTable
                 users={filteredUsers}
                 onEdit={handleEditUser}
                 onResetPassword={handleResetPassword}
@@ -505,7 +475,7 @@ const UsersPage: React.FC = () => {
           )}
         </div>
       </div>
-      <CreateUserModal 
+      <CreateUserModal
         isOpen={isCreateUserModalOpen}
         onClose={() => setIsCreateUserModalOpen(false)}
         onSubmit={handleCreateUser}
